@@ -3,7 +3,6 @@ import { analyzeHeaders } from "../checks/headers.js";
 import { analyzeCors } from "../checks/cors.js";
 import type { SecurityOptions, Issue } from "../types.js";
 import { defaultLogger } from "../logger.js";
-import { runNpmAudit } from "../checks/npmAudit.js";
 import { onceAsync } from "../utils/once.js";
 import { addIssues, getIssues } from "../state.js";
 
@@ -19,7 +18,12 @@ export function withSecurity(handler: NextApiHandler, userOpts: SecurityOptions 
 
   // Run npm audit once at boot
   if (opts.audit?.npm && opts.environment !== "prod") {
-    const runAuditOnce = onceAsync(() => runNpmAudit(opts));
+    const runAuditOnce = onceAsync(async () => {
+      // Use dynamic path to prevent webpack from bundling this module
+      const modulePath = "../checks/npm" + "Audit.js";
+      const { runNpmAudit } = await import(/* webpackIgnore: true */ modulePath);
+      return runNpmAudit(opts);
+    });
     void runAuditOnce().then((issues) => {
       addIssues(issues);
       issues.forEach(opts.logger!);

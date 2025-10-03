@@ -5,7 +5,7 @@ import {
   analyzeHeaders,
   analyzeCors,
   addIssues,
-} from "@bluedot/security-middleware";
+} from "@bluedot/security-middleware/browser";
 
 export function middleware(req: NextRequest) {
   const res = NextResponse.next();
