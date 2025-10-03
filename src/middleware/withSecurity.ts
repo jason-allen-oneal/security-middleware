@@ -31,12 +31,6 @@ export function withSecurity(handler: NextApiHandler, userOpts: SecurityOptions 
   }
 
   return async function (req: NextApiRequest, res: NextApiResponse) {
-    // Special endpoint for overlay
-    if (req.url?.startsWith("/api/__security")) {
-      res.status(200).json({ issues: getIssues() });
-      return;
-    }
-
     if (opts.enabled === false) return handler(req, res);
 
     // Wrap res.end to inspect final headers
