@@ -25,6 +25,7 @@
   "author": "Bluedot",
   "license": "MIT",
   "dependencies": {
+    "@bluedot/security-middleware": "file:bluedot-security-middleware-0.1.0.tgz",
     "chalk": "^5.3.0",
     "next": "^15.5.4"
   },
@@ -45,13 +46,17 @@
   },
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./browser": {
+      "import": "./dist/index.browser.js",
+      "require": "./dist/index.browser.js",
+      "default": "./dist/index.browser.js"
     },
     "./node": {
       "import": "./dist/index.node.js",
       "require": "./dist/index.node.js"
     }
-}
-
+  }
 }
