@@ -1,0 +1,21 @@
+{
+    "name": "next-app-security-example",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev -p 3002",
+        "build": "next build",
+        "start": "next start -p 3002"
+    },
+    "dependencies": {
+        "@bluedot/security-middleware": "file:../../bluedot-security-middleware-0.1.0.tgz",
+        "next": "15.5.4",
+        "react": "18.2.0",
+        "react-dom": "18.2.0"
+    },
+    "devDependencies": {
+        "@types/node": "^24.6.2",
+        "@types/react": "^19.2.0",
+        "typescript": "^5.9.3"
+    }
+}
