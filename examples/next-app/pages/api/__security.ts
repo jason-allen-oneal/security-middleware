@@ -1,6 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getIssues } from "@bluedot/security-middleware/browser";
+import { withSecurity, getIssues } from "@bluedot/security-middleware";
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+function handler(req: NextApiRequest, res: NextApiResponse) {
   res.status(200).json({ issues: getIssues() });
 }
+
+export default withSecurity(handler, {
+  environment: "dev",
+  audit: { npm: true },
+});

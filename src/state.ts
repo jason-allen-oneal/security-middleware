@@ -7,7 +7,15 @@ export function addIssues(newIssues: Issue[]) {
 }
 
 export function getIssues(): Issue[] {
-  return issues;
+  // Deduplicate issues by ID, keeping the first occurrence
+  const seen = new Set<string>();
+  return issues.filter((issue) => {
+    if (seen.has(issue.id)) {
+      return false;
+    }
+    seen.add(issue.id);
+    return true;
+  });
 }
 
 export function clearIssues() {
