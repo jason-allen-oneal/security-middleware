@@ -1,5 +1,17 @@
 import type { Issue, SecurityOptions } from "../types.js";
 
+/**
+ * Analyzes CORS headers for potential security misconfigurations.
+ * 
+ * Checks for:
+ * - Wildcard (*) origins that could expose APIs to unauthorized access
+ * - Origins not in the trusted origins list
+ * - Exposure of unsafe HTTP methods (PUT, DELETE, PATCH)
+ * 
+ * @param headers - Response headers to analyze
+ * @param opts - Security middleware options including CORS configuration
+ * @returns Array of issues for any CORS misconfigurations
+ */
 export function analyzeCors(
   headers: Record<string, string | number | string[] | undefined>,
   opts: SecurityOptions
@@ -12,7 +24,6 @@ export function analyzeCors(
   const allowOrigin = h['access-control-allow-origin'];
   const allowMethods = (h['access-control-allow-methods'] || '').toUpperCase();
 
-  // Wildcard origin check
   if (allowOrigin === '*') {
     const allowWildcard = opts.cors?.allowlistWildcardInDev && (opts.environment === 'dev' || process.env.NODE_ENV === 'development');
     if (!allowWildcard) {
@@ -36,7 +47,6 @@ export function analyzeCors(
     }
   }
 
-  // Unsafe method exposure
   if (allowMethods && /PUT|DELETE|PATCH/i.test(allowMethods)) {
     issues.push({
       id: 'cors.methods.unsafe',
