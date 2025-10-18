@@ -33,6 +33,7 @@ After creating a GitHub release, the package can be published to NPM:
    - Go to Repository Settings → Secrets and variables → Actions
    - Add a secret named `NPM_TOKEN` with your NPM authentication token
    - Get your token from: https://www.npmjs.com/settings/YOUR_USERNAME/tokens
+   - **Token Requirements**: Use a classic token with **publish** access, or a granular access token with publish permissions for the package
 
 2. **Automatic Publishing**:
    - When you publish a GitHub release, the workflow will automatically publish to NPM
