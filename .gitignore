@@ -6,7 +6,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Build outputs
-dist/
+# dist/ - Kept in repo for releases
 build/
 *.tsbuildinfo
 
@@ -88,7 +88,6 @@ out/
 
 # Nuxt.js build / generate output
 .nuxt
-dist
 
 # Storybook build outputs
 .out
