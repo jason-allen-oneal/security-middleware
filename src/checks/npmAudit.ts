@@ -3,8 +3,19 @@ import { promisify } from "node:util";
 import type { Issue, SecurityOptions } from "../types.js";
 
 const pexec = promisify(exec);
+
+/**
+ * Cache for npm audit results to avoid repeated expensive operations.
+ */
 let cache: { at: number; issues: Issue[] } | null = null;
 
+/**
+ * Runs npm audit to check for known vulnerabilities in dependencies.
+ * Results are cached based on the cacheMs option to avoid redundant scans.
+ * 
+ * @param opts - Security middleware options containing audit configuration
+ * @returns Array of issues representing audit findings or errors
+ */
 export async function runNpmAudit(opts: SecurityOptions): Promise<Issue[]> {
   const cacheMs = opts.audit?.cacheMs ?? 5 * 60_000;
   if (cache && Date.now() - cache.at < cacheMs) return cache.issues;

@@ -6,6 +6,33 @@ import type { SecurityOptions, Issue } from "../types.js";
 import { onceAsync } from "../utils/once.js";
 import { addIssues, getIssues } from "../state.js";
 
+/**
+ * Creates Express middleware for runtime security analysis.
+ * 
+ * This middleware intercepts HTTP responses to analyze security headers and CORS configuration.
+ * It can also run npm audit on startup to detect vulnerable dependencies.
+ * 
+ * The middleware provides a special `/__security` endpoint that returns all collected issues
+ * as JSON, which can be consumed by browser overlay scripts.
+ * 
+ * @param userOpts - Configuration options for the security middleware
+ * @returns Express middleware function
+ * 
+ * @example
+ * ```ts
+ * import express from "express";
+ * import { securityMiddleware } from "@bluedot/security-middleware";
+ * 
+ * const app = express();
+ * 
+ * app.use(securityMiddleware({
+ *   environment: "dev",
+ *   audit: { npm: true },
+ * }));
+ * 
+ * app.listen(3000);
+ * ```
+ */
 export function securityMiddleware(userOpts: SecurityOptions = {}) {
   const opts: SecurityOptions = {
     enabled: true,
@@ -19,10 +46,8 @@ export function securityMiddleware(userOpts: SecurityOptions = {}) {
     logger: userOpts.logger || defaultLogger,
   };
 
-  // Run npm audit once
   if (opts.audit?.npm === true && opts.environment !== "prod") {
     const runAuditOnce = onceAsync(async () => {
-      // Use dynamic path to prevent webpack from bundling this module
       const modulePath = "../checks/npm" + "Audit.js";
       const { runNpmAudit } = await import(/* webpackIgnore: true */ modulePath);
       return runNpmAudit(opts);
@@ -34,7 +59,6 @@ export function securityMiddleware(userOpts: SecurityOptions = {}) {
   }
 
   return function (req: Request, res: Response, next: NextFunction) {
-    // Overlay JSON endpoint
     if (req.path === "/__security") {
       res.json({ issues: getIssues() });
       return;
@@ -43,7 +67,7 @@ export function securityMiddleware(userOpts: SecurityOptions = {}) {
     if (opts.enabled === false) return next();
 
     const originalEnd = res.end;
-    res.end = function (chunk?: any, encoding?: any, cb?: any) {
+    res.end = function (this: typeof res, chunk?: any, encoding?: any, cb?: any) {
       try {
         const headers = res.getHeaders();
         const issues: Issue[] = [];
@@ -69,7 +93,6 @@ export function securityMiddleware(userOpts: SecurityOptions = {}) {
         });
       }
 
-      // @ts-ignore
       return originalEnd.call(this, chunk, encoding, cb);
     } as any;
 

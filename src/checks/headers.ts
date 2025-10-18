@@ -1,5 +1,8 @@
 import type { Issue } from "../types.js";
 
+/**
+ * Documentation URLs for security headers.
+ */
 const DOCS = {
   hsts: "https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Strict_Transport_Security_Cheat_Sheet.html",
   csp: "https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html",
@@ -8,6 +11,19 @@ const DOCS = {
   refpol: "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy"
 };
 
+/**
+ * Analyzes HTTP response headers for missing security headers.
+ * 
+ * Checks for the presence of important security headers including:
+ * - Strict-Transport-Security (HSTS)
+ * - Content-Security-Policy (CSP)
+ * - X-Frame-Options
+ * - X-Content-Type-Options
+ * - Referrer-Policy
+ * 
+ * @param headers - Response headers to analyze
+ * @returns Array of issues for any missing security headers
+ */
 export function analyzeHeaders(headers: Record<string, string | number | string[] | undefined>): Issue[] {
   const h = Object.fromEntries(
     Object.entries(headers).map(([k,v]) => [k.toLowerCase(), Array.isArray(v) ? v.join(', ') : (v ?? '').toString()])

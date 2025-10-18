@@ -6,6 +6,31 @@ import { defaultLogger } from "../logger.js";
 import { onceAsync } from "../utils/once.js";
 import { addIssues, getIssues } from "../state.js";
 
+/**
+ * Higher-order function that wraps Next.js API route handlers with security analysis.
+ * 
+ * This wrapper intercepts API responses to analyze security headers and CORS configuration.
+ * It can also run npm audit on startup to detect vulnerable dependencies.
+ * 
+ * @param handler - The Next.js API route handler to wrap
+ * @param userOpts - Configuration options for the security middleware
+ * @returns Wrapped API handler with security analysis
+ * 
+ * @example
+ * ```ts
+ * import type { NextApiRequest, NextApiResponse } from "next";
+ * import { withSecurity } from "@bluedot/security-middleware";
+ * 
+ * function handler(req: NextApiRequest, res: NextApiResponse) {
+ *   res.status(200).json({ ok: true });
+ * }
+ * 
+ * export default withSecurity(handler, {
+ *   environment: "dev",
+ *   audit: { npm: true },
+ * });
+ * ```
+ */
 export function withSecurity(handler: NextApiHandler, userOpts: SecurityOptions = {}) {
   const opts: SecurityOptions = {
     enabled: true,
@@ -16,10 +41,8 @@ export function withSecurity(handler: NextApiHandler, userOpts: SecurityOptions 
     logger: userOpts.logger || defaultLogger,
   };
 
-  // Run npm audit once at boot
   if (opts.audit?.npm && opts.environment !== "prod") {
     const runAuditOnce = onceAsync(async () => {
-      // Use dynamic path to prevent webpack from bundling this module
       const modulePath = "../checks/npm" + "Audit.js";
       const { runNpmAudit } = await import(/* webpackIgnore: true */ modulePath);
       return runNpmAudit(opts);
@@ -33,7 +56,6 @@ export function withSecurity(handler: NextApiHandler, userOpts: SecurityOptions 
   return async function (req: NextApiRequest, res: NextApiResponse) {
     if (opts.enabled === false) return handler(req, res);
 
-    // Wrap res.end to inspect final headers
     const originalEnd = res.end.bind(res);
     res.end = ((...args: any[]) => {
       try {
@@ -58,7 +80,6 @@ export function withSecurity(handler: NextApiHandler, userOpts: SecurityOptions 
           severity: "info",
         });
       }
-      // @ts-ignore
       return originalEnd(...args);
     }) as any;
 
