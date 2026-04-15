@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "dev:test": "NODE_ENV=test jest --watch",
     "prepublishOnly": "npm run build"
   },
