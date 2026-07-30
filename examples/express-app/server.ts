@@ -9,6 +9,7 @@ app.use(
   securityMiddleware({
     environment: "dev",
     audit: { npm: true, cacheMs: 300000 },
+    issueEndpoint: { enabled: true },
   })
 );
 

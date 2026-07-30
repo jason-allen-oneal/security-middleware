@@ -25,7 +25,11 @@ export function analyzeCors(
   const allowMethods = (h['access-control-allow-methods'] || '').toUpperCase();
 
   if (allowOrigin === '*') {
-    const allowWildcard = opts.cors?.allowlistWildcardInDev && (opts.environment === 'dev' || process.env.NODE_ENV === 'development');
+    const inferredDevelopment =
+      typeof process !== "undefined" && process.env?.NODE_ENV === "development";
+    const allowWildcard =
+      opts.cors?.allowlistWildcardInDev &&
+      (opts.environment === "dev" || inferredDevelopment);
     if (!allowWildcard) {
       issues.push({
         id: 'cors.origin.wildcard',

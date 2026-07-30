@@ -8,5 +8,5 @@
  */
 export { analyzeHeaders } from "./checks/headers.js";
 export { analyzeCors } from "./checks/cors.js";
-export { getIssues, addIssues, clearIssues } from "./state.js";
+export { getIssues, addIssues, clearIssues, createIssueStore } from "./state.js";
 //# sourceMappingURL=index.browser.js.map

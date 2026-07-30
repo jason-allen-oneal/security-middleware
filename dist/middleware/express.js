@@ -2,15 +2,15 @@ import { analyzeHeaders } from "../checks/headers.js";
 import { analyzeCors } from "../checks/cors.js";
 import { defaultLogger } from "../logger.js";
 import { onceAsync } from "../utils/once.js";
-import { addIssues, getIssues } from "../state.js";
+import { addIssues as addLegacyIssues, createIssueStore } from "../state.js";
 /**
  * Creates Express middleware for runtime security analysis.
  *
  * This middleware intercepts HTTP responses to analyze security headers and CORS configuration.
  * It can also run npm audit on startup to detect vulnerable dependencies.
  *
- * The middleware provides a special `/__security` endpoint that returns all collected issues
- * as JSON, which can be consumed by browser overlay scripts.
+ * The middleware can expose an explicit development-only `/__security` endpoint
+ * that returns the instance's collected issues as JSON for browser overlay scripts.
  *
  * @param userOpts - Configuration options for the security middleware
  * @returns Express middleware function
@@ -32,30 +32,37 @@ import { addIssues, getIssues } from "../state.js";
  */
 export function securityMiddleware(userOpts = {}) {
     const opts = {
-        enabled: true,
-        environment: process.env.NODE_ENV === "production" ? "prod" : "dev",
+        enabled: userOpts.enabled ?? true,
+        environment: userOpts.environment ?? (process.env.NODE_ENV === "production" ? "prod" : "dev"),
         checks: { headers: true, cors: true, ...(userOpts.checks || {}) },
         audit: {
             cacheMs: 300000,
             ...userOpts.audit,
         },
+        state: { maxIssues: 100, maxAgeMs: 60 * 60_000, ...(userOpts.state || {}) },
+        issueEndpoint: { enabled: false, path: "/__security", ...(userOpts.issueEndpoint || {}) },
         cors: { trustedOrigins: [], allowlistWildcardInDev: false, ...(userOpts.cors || {}) },
         logger: userOpts.logger || defaultLogger,
     };
-    if (opts.audit?.npm === true && opts.environment !== "prod") {
+    const issueStore = createIssueStore(opts.state);
+    if (opts.enabled !== false && opts.audit?.npm === true && opts.environment !== "prod") {
         const runAuditOnce = onceAsync(async () => {
             const modulePath = "../checks/npm" + "Audit.js";
             const { runNpmAudit } = await import(/* webpackIgnore: true */ modulePath);
             return runNpmAudit(opts);
         });
         void runAuditOnce().then((issues) => {
-            addIssues(issues);
+            issueStore.addIssues(issues);
+            addLegacyIssues(issues);
             issues.forEach(opts.logger);
         });
     }
     return function (req, res, next) {
-        if (req.path === "/__security") {
-            res.json({ issues: getIssues() });
+        const exposesIssues = opts.enabled !== false &&
+            opts.environment === "dev" &&
+            opts.issueEndpoint?.enabled === true;
+        if (exposesIssues && req.path === opts.issueEndpoint?.path) {
+            res.json({ issues: issueStore.getIssues() });
             return;
         }
         if (opts.enabled === false)
@@ -72,7 +79,8 @@ export function securityMiddleware(userOpts = {}) {
                     issues.push(...analyzeCors(headers, opts));
                 }
                 if (issues.length) {
-                    addIssues(issues);
+                    issueStore.addIssues(issues);
+                    addLegacyIssues(issues);
                 }
                 for (const issue of issues)
                     opts.logger(issue);

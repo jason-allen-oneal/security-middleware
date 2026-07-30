@@ -1,5 +1,9 @@
-import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import type { SecurityOptions } from "../types.js";
+interface ApiResponseLike {
+    end: (...args: any[]) => any;
+    getHeaders: () => Record<string, string | number | string[] | undefined>;
+}
+type ApiHandlerLike<Request, Response extends ApiResponseLike> = (req: Request, res: Response) => unknown | Promise<unknown>;
 /**
  * Higher-order function that wraps Next.js API route handlers with security analysis.
  *
@@ -25,4 +29,5 @@ import type { SecurityOptions } from "../types.js";
  * });
  * ```
  */
-export declare function withSecurity(handler: NextApiHandler, userOpts?: SecurityOptions): (req: NextApiRequest, res: NextApiResponse) => Promise<unknown>;
+export declare function withSecurity<Request, Response extends ApiResponseLike>(handler: ApiHandlerLike<Request, Response>, userOpts?: SecurityOptions): (req: Request, res: Response) => Promise<unknown>;
+export {};

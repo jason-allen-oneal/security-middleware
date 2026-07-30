@@ -15,4 +15,5 @@ export type { SecurityOptions, Issue } from "./types.js";
 export { analyzeHeaders } from "./checks/headers.js";
 export { analyzeCors } from "./checks/cors.js";
 
-export { getIssues, addIssues, clearIssues } from "./state.js";
+export { getIssues, addIssues, clearIssues, createIssueStore } from "./state.js";
+export type { IssueStore, IssueStoreOptions } from "./state.js";

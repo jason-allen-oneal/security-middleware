@@ -1,36 +1,69 @@
-/**
- * In-memory store for collected security issues.
- * This allows aggregating issues across multiple requests and retrieving them via the overlay endpoint.
- */
-let issues = [];
-/**
- * Add new security issues to the global issue collection.
- *
- * @param newIssues - Array of issues to add
- */
-export function addIssues(newIssues) {
-    issues.push(...newIssues);
+const DEFAULT_MAX_ISSUES = 100;
+const DEFAULT_MAX_AGE_MS = 60 * 60_000;
+function positiveInteger(value, fallback) {
+    return Number.isSafeInteger(value) && value > 0 ? value : fallback;
 }
 /**
- * Retrieve all collected security issues, deduplicated by ID.
- * When multiple instances of the same issue are reported, only the first occurrence is returned.
- *
- * @returns Array of unique security issues
+ * Create a bounded issue store. Issues are deduplicated by ID on write, expire
+ * by age, and are evicted oldest-first when the count limit is reached.
  */
-export function getIssues() {
-    const seen = new Set();
-    return issues.filter((issue) => {
-        if (seen.has(issue.id)) {
-            return false;
+export function createIssueStore(options = {}) {
+    const maxIssues = positiveInteger(options.maxIssues, DEFAULT_MAX_ISSUES);
+    const maxAgeMs = positiveInteger(options.maxAgeMs, DEFAULT_MAX_AGE_MS);
+    const now = options.now ?? Date.now;
+    const issues = new Map();
+    const prune = (at) => {
+        for (const [id, entry] of issues) {
+            if (at - entry.updatedAt >= maxAgeMs)
+                issues.delete(id);
         }
-        seen.add(issue.id);
-        return true;
-    });
+        while (issues.size > maxIssues) {
+            const oldestId = issues.keys().next().value;
+            if (oldestId === undefined)
+                break;
+            issues.delete(oldestId);
+        }
+    };
+    return {
+        addIssues(newIssues) {
+            const at = now();
+            prune(at);
+            for (const issue of newIssues) {
+                const existing = issues.get(issue.id);
+                if (existing) {
+                    // Preserve first-reported evidence and ordering while refreshing age.
+                    existing.updatedAt = at;
+                }
+                else {
+                    while (issues.size >= maxIssues) {
+                        const oldestId = issues.keys().next().value;
+                        if (oldestId === undefined)
+                            break;
+                        issues.delete(oldestId);
+                    }
+                    issues.set(issue.id, { issue, updatedAt: at });
+                }
+            }
+        },
+        getIssues() {
+            prune(now());
+            return Array.from(issues.values(), ({ issue }) => issue);
+        },
+        clearIssues() {
+            issues.clear();
+        },
+    };
 }
-/**
- * Clear all collected security issues from memory.
- */
+// Backwards-compatible default store for callers that use the state helpers
+// directly. Middleware factories use their own stores for application isolation.
+const defaultStore = createIssueStore();
+export function addIssues(newIssues) {
+    defaultStore.addIssues(newIssues);
+}
+export function getIssues() {
+    return defaultStore.getIssues();
+}
 export function clearIssues() {
-    issues = [];
+    defaultStore.clearIssues();
 }
 //# sourceMappingURL=state.js.map
