@@ -2,7 +2,7 @@ import { analyzeHeaders } from "../checks/headers.js";
 import { analyzeCors } from "../checks/cors.js";
 import { defaultLogger } from "../logger.js";
 import { onceAsync } from "../utils/once.js";
-import { addIssues } from "../state.js";
+import { addIssues as addLegacyIssues, createIssueStore } from "../state.js";
 /**
  * Higher-order function that wraps Next.js API route handlers with security analysis.
  *
@@ -30,21 +30,24 @@ import { addIssues } from "../state.js";
  */
 export function withSecurity(handler, userOpts = {}) {
     const opts = {
-        enabled: true,
-        environment: process.env.NODE_ENV === "production" ? "prod" : "dev",
+        enabled: userOpts.enabled ?? true,
+        environment: userOpts.environment ?? (process.env.NODE_ENV === "production" ? "prod" : "dev"),
         checks: { headers: true, cors: true, ...(userOpts.checks || {}) },
         audit: { cacheMs: 300000, ...userOpts.audit },
+        state: { maxIssues: 100, maxAgeMs: 60 * 60_000, ...(userOpts.state || {}) },
         cors: { trustedOrigins: [], allowlistWildcardInDev: false, ...(userOpts.cors || {}) },
         logger: userOpts.logger || defaultLogger,
     };
-    if (opts.audit?.npm && opts.environment !== "prod") {
+    const issueStore = createIssueStore(opts.state);
+    if (opts.enabled !== false && opts.audit?.npm && opts.environment !== "prod") {
         const runAuditOnce = onceAsync(async () => {
             const modulePath = "../checks/npm" + "Audit.js";
             const { runNpmAudit } = await import(/* webpackIgnore: true */ modulePath);
             return runNpmAudit(opts);
         });
         void runAuditOnce().then((issues) => {
-            addIssues(issues);
+            issueStore.addIssues(issues);
+            addLegacyIssues(issues);
             issues.forEach(opts.logger);
         });
     }
@@ -61,8 +64,10 @@ export function withSecurity(handler, userOpts = {}) {
                 const headerIssues = opts.checks?.headers ? analyzeHeaders(headers) : [];
                 const corsIssues = opts.checks?.cors ? analyzeCors(headers, opts) : [];
                 const all = [...headerIssues, ...corsIssues];
-                if (all.length)
-                    addIssues(all);
+                if (all.length) {
+                    issueStore.addIssues(all);
+                    addLegacyIssues(all);
+                }
                 all.forEach(opts.logger);
             }
             catch (err) {

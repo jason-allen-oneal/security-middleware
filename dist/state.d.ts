@@ -1,18 +1,19 @@
 import type { Issue } from "./types.js";
+export interface IssueStoreOptions {
+    maxIssues?: number;
+    maxAgeMs?: number;
+    now?: () => number;
+}
+export interface IssueStore {
+    addIssues(newIssues: Issue[]): void;
+    getIssues(): Issue[];
+    clearIssues(): void;
+}
 /**
- * Add new security issues to the global issue collection.
- *
- * @param newIssues - Array of issues to add
+ * Create a bounded issue store. Issues are deduplicated by ID on write, expire
+ * by age, and are evicted oldest-first when the count limit is reached.
  */
+export declare function createIssueStore(options?: IssueStoreOptions): IssueStore;
 export declare function addIssues(newIssues: Issue[]): void;
-/**
- * Retrieve all collected security issues, deduplicated by ID.
- * When multiple instances of the same issue are reported, only the first occurrence is returned.
- *
- * @returns Array of unique security issues
- */
 export declare function getIssues(): Issue[];
-/**
- * Clear all collected security issues from memory.
- */
 export declare function clearIssues(): void;

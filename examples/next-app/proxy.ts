@@ -4,10 +4,9 @@ import type { NextRequest } from "next/server";
 import {
   analyzeHeaders,
   analyzeCors,
-  addIssues,
 } from "@bluedot/security-middleware/browser";
 
-export function middleware(req: NextRequest) {
+export function proxy(_req: NextRequest) {
   const res = NextResponse.next();
 
   // Convert Fetch API Headers -> plain object
@@ -22,7 +21,7 @@ export function middleware(req: NextRequest) {
   ];
 
   if (issues.length) {
-    addIssues(issues);
+    console.warn("Security middleware findings:", issues);
   }
 
   return res;

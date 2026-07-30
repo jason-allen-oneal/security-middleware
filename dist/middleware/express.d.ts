@@ -6,8 +6,8 @@ import type { SecurityOptions } from "../types.js";
  * This middleware intercepts HTTP responses to analyze security headers and CORS configuration.
  * It can also run npm audit on startup to detect vulnerable dependencies.
  *
- * The middleware provides a special `/__security` endpoint that returns all collected issues
- * as JSON, which can be consumed by browser overlay scripts.
+ * The middleware can expose an explicit development-only `/__security` endpoint
+ * that returns the instance's collected issues as JSON for browser overlay scripts.
  *
  * @param userOpts - Configuration options for the security middleware
  * @returns Express middleware function

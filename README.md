@@ -29,6 +29,7 @@ const app = express();
 app.use(securityMiddleware({
   environment: "dev",
   audit: { npm: true },
+  issueEndpoint: { enabled: true },
 }));
 
 app.get("/", (req, res) => {
@@ -55,16 +56,42 @@ export default withSecurity(handler, {
 
 ## Configuration
 
-- **environment**: `"dev" | "staging" | "prod"` (default: `"dev"`)
+- **enabled**: `boolean` – enable/disable all middleware collection and audit work (default: `true`)
+- **environment**: `"dev" | "staging" | "prod"` (inferred from `NODE_ENV`; production maps to `"prod"`, otherwise `"dev"`)
 - **checks.headers**: `boolean` – enable/disable header analysis
 - **checks.cors**: `boolean` – enable/disable CORS analysis
 - **cors.trustedOrigins**: `string[]` – list of allowed origins
 - **cors.allowlistWildcardInDev**: `boolean` – allow `*` origins in development
 - **audit.npm**: `boolean` – run `npm audit` hook
 - **audit.cacheMs**: `number` – cache audit results in milliseconds
+- **state.maxIssues**: `number` – maximum unique issues retained per middleware instance (default: `100`)
+- **state.maxAgeMs**: `number` – maximum issue age in milliseconds (default: one hour)
+- **issueEndpoint.enabled**: `boolean` – explicitly expose the issue endpoint in `dev` only (default: `false`)
+- **issueEndpoint.path**: `string` – issue endpoint path (default: `"/__security"`)
 - **logger**: `(issue: Issue) => void` – custom issue handler
+
+The issue endpoint is disabled by default and cannot be exposed in `staging` or
+`prod`, even when `issueEndpoint.enabled` is set. Each endpoint reads only its
+middleware instance's bounded store. For backwards compatibility, the exported
+`addIssues`, `getIssues`, and `clearIssues` helpers remain a bounded,
+process-wide aggregate and should not be used for tenant isolation.
+
+### Browser overlay
+
+The published package includes `overlay/security-overlay.js`. Serve or copy that
+file into your application's public assets, enable the development endpoint,
+and load it only in development:
+
+```html
+<script src="/security-overlay.js" data-security-endpoint="/__security"></script>
+```
+
+The overlay is intended for middleware instances that expose the configured
+development endpoint. Edge/Proxy bundles have isolated memory and report their
+findings through their configured logger instead. The overlay renders issue
+fields with DOM text nodes rather than HTML injection.
 
 ## License
 
 This project is licensed under the **MIT License**.  
-See the LICENSE file for full license text.
+See `LICENSE.md` for the full license text.

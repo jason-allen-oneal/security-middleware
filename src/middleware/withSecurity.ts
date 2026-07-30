@@ -1,10 +1,19 @@
-import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import { analyzeHeaders } from "../checks/headers.js";
 import { analyzeCors } from "../checks/cors.js";
 import type { SecurityOptions, Issue } from "../types.js";
 import { defaultLogger } from "../logger.js";
 import { onceAsync } from "../utils/once.js";
-import { addIssues, getIssues } from "../state.js";
+import { addIssues as addLegacyIssues, createIssueStore } from "../state.js";
+
+interface ApiResponseLike {
+  end: (...args: any[]) => any;
+  getHeaders: () => Record<string, string | number | string[] | undefined>;
+}
+
+type ApiHandlerLike<Request, Response extends ApiResponseLike> = (
+  req: Request,
+  res: Response
+) => unknown | Promise<unknown>;
 
 /**
  * Higher-order function that wraps Next.js API route handlers with security analysis.
@@ -31,29 +40,35 @@ import { addIssues, getIssues } from "../state.js";
  * });
  * ```
  */
-export function withSecurity(handler: NextApiHandler, userOpts: SecurityOptions = {}) {
+export function withSecurity<Request, Response extends ApiResponseLike>(
+  handler: ApiHandlerLike<Request, Response>,
+  userOpts: SecurityOptions = {}
+) {
   const opts: SecurityOptions = {
-    enabled: true,
-    environment: process.env.NODE_ENV === "production" ? "prod" : "dev",
+    enabled: userOpts.enabled ?? true,
+    environment: userOpts.environment ?? (process.env.NODE_ENV === "production" ? "prod" : "dev"),
     checks: { headers: true, cors: true, ...(userOpts.checks || {}) },
     audit: { cacheMs: 300000, ...userOpts.audit },
+    state: { maxIssues: 100, maxAgeMs: 60 * 60_000, ...(userOpts.state || {}) },
     cors: { trustedOrigins: [], allowlistWildcardInDev: false, ...(userOpts.cors || {}) },
     logger: userOpts.logger || defaultLogger,
   };
+  const issueStore = createIssueStore(opts.state);
 
-  if (opts.audit?.npm && opts.environment !== "prod") {
+  if (opts.enabled !== false && opts.audit?.npm && opts.environment !== "prod") {
     const runAuditOnce = onceAsync(async () => {
       const modulePath = "../checks/npm" + "Audit.js";
       const { runNpmAudit } = await import(/* webpackIgnore: true */ modulePath);
       return runNpmAudit(opts);
     });
     void runAuditOnce().then((issues) => {
-      addIssues(issues);
+      issueStore.addIssues(issues);
+      addLegacyIssues(issues);
       issues.forEach(opts.logger!);
     });
   }
 
-  return async function (req: NextApiRequest, res: NextApiResponse) {
+  return async function (req: Request, res: Response) {
     if (opts.enabled === false) return handler(req, res);
 
     const originalEnd = res.end.bind(res);
@@ -70,7 +85,10 @@ export function withSecurity(handler: NextApiHandler, userOpts: SecurityOptions 
         const corsIssues: Issue[] = opts.checks?.cors ? analyzeCors(headers, opts) : [];
 
         const all = [...headerIssues, ...corsIssues];
-        if (all.length) addIssues(all);
+        if (all.length) {
+          issueStore.addIssues(all);
+          addLegacyIssues(all);
+        }
         all.forEach(opts.logger!);
       } catch (err) {
         opts.logger!({

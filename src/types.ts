@@ -43,6 +43,20 @@ export interface SecurityOptions {
     /** Cache audit results for this many milliseconds. Default: 300000 (5 minutes) */
     cacheMs?: number;
   };
+  /** Configuration for bounded in-memory issue retention */
+  state?: {
+    /** Maximum number of unique issues retained per middleware instance. Default: 100 */
+    maxIssues?: number;
+    /** Maximum age of retained issues in milliseconds. Default: 3600000 (1 hour) */
+    maxAgeMs?: number;
+  };
+  /** Optional development-only endpoint for inspecting collected issues */
+  issueEndpoint?: {
+    /** Explicitly expose the endpoint in the dev environment. Default: false */
+    enabled?: boolean;
+    /** Endpoint path. Default: "/__security" */
+    path?: string;
+  };
   /** CORS configuration options */
   cors?: {
     /** List of trusted origins to allow */

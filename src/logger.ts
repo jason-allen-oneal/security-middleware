@@ -1,5 +1,12 @@
-import chalk from "chalk";
 import { Issue } from "./types.js";
+
+const ansi = (open: number, close: number, value: string): string => {
+  const enabled =
+    typeof process !== "undefined" &&
+    Boolean(process.stdout?.isTTY) &&
+    process.env?.NO_COLOR === undefined;
+  return enabled ? `\u001B[${open}m${value}\u001B[${close}m` : value;
+};
 
 /**
  * Default console logger for security issues.
@@ -9,14 +16,14 @@ import { Issue } from "./types.js";
  */
 export const defaultLogger = (issue: Issue) => {
   const tag =
-    issue.severity === 'error' ? chalk.bgRed.black(' SECURITY ')
-    : issue.severity === 'warn' ? chalk.bgYellow.black(' SECURITY ')
-    : chalk.bgBlue.black(' SECURITY ');
+    issue.severity === "error" ? ansi(41, 0, " SECURITY ")
+    : issue.severity === "warn" ? ansi(43, 0, " SECURITY ")
+    : ansi(44, 0, " SECURITY ");
 
   const sev =
-    issue.severity === 'error' ? chalk.red('error')
-    : issue.severity === 'warn' ? chalk.yellow('warn')
-    : chalk.blue('info');
+    issue.severity === "error" ? ansi(31, 0, "error")
+    : issue.severity === "warn" ? ansi(33, 0, "warn")
+    : ansi(34, 0, "info");
 
   console.log(`${tag} ${sev}: ${issue.title}`);
   if (issue.description) console.log('  ' + issue.description);
